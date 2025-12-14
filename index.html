@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Hand Gesture Circle Control</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      margin: 0;
+      background: #0f172a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: white;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+    }
+    canvas {
+      border: 2px solid #38bdf8;
+      border-radius: 12px;
+      background: #020617;
+    }
+    #info {
+      position: absolute;
+      top: 10px;
+      text-align: center;
+      font-size: 14px;
+      color: #e5e7eb;
+      max-width: 90%;
+    }
+    #startBtn {
+      position: absolute;
+      bottom: 20px;
+      padding: 12px 20px;
+      font-size: 16px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      background: #38bdf8;
+      color: #020617;
+      font-weight: bold;
+    }
+    #error {
+      position: absolute;
+      bottom: 70px;
+      color: #fca5a5;
+      font-size: 14px;
+      text-align: center;
+      display: none;
+      max-width: 90%;
+    }
+    #status {
+      position: absolute;
+      bottom: 100px;
+      color: #a5f3fc;
+      font-size: 13px;
+      text-align: center;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="info">
+    ✋ Hand Gesture Circle Control<br />
+    Click <b>Start Camera</b> and allow permission.<br />
+    ⚠ Must be opened via <b>http://localhost</b> or <b>HTTPS</b>
+  </div>
+
+  <div id="status"></div>
+  <div id="error"></div>
+
+  <button id="startBtn">Start Camera</button>
+
+  <canvas id="canvas" width="640" height="480"></canvas>
+
+  <!-- MediaPipe Hands -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const startBtn = document.getElementById("startBtn");
+    const errorBox = document.getElementById("error");
+    const statusBox = document.getElementById("status");
+
+    let circleX = canvas.width / 2;
+    let circleY = canvas.height / 2;
+    let camera = null;
+
+    function drawCircle() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.beginPath();
+      ctx.arc(circleX, circleY, 20, 0, Math.PI * 2);
+      ctx.fillStyle = "#38bdf8";
+      ctx.fill();
+    }
+
+    drawCircle();
+
+    const hands = new Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    });
+
+    hands.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.7,
+      minTrackingConfidence: 0.7
+    });
+
+    hands.onResults(results => {
+      drawCircle();
+
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        const indexFinger = results.multiHandLandmarks[0][8];
+        circleX = indexFinger.x * canvas.width;
+        circleY = indexFinger.y * canvas.height;
+      }
+    });
+
+    const videoElement = document.createElement("video");
+    videoElement.setAttribute("playsinline", "");
+    videoElement.muted = true;
+    videoElement.style.display = "none";
+    document.body.appendChild(videoElement);
+
+    async function requestCameraPermission() {
+      try {
+        statusBox.innerText = "Requesting camera permission…";
+        statusBox.style.display = "block";
+
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        stream.getTracks().forEach(track => track.stop());
+        return true;
+      } catch (err) {
+        return false;
+      }
+    }
+
+    async function startCamera() {
+      errorBox.style.display = "none";
+      statusBox.style.display = "none";
+
+      if (locati
